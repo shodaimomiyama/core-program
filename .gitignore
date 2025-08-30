@@ -3,3 +3,5 @@ node_modules
 build/
 *.ptau
 *.wtns
+
+settings.local.json
