@@ -17,8 +17,10 @@ contract TornadoCatsTest is Test {
     Verifier verifier;
     TornadoCats tornadoCats;
 
-    bytes32 constant topicDeposit = keccak256("Deposit(bytes32,uint32,uint256)");
-    bytes32 constant topicWithdrawal = keccak256("Withdrawal(address,bytes32,address,uint256)");
+    bytes32 constant topicDeposit =
+        keccak256("Deposit(bytes32,uint32,uint256)");
+    bytes32 constant topicWithdrawal =
+        keccak256("Withdrawal(address,bytes32,address,uint256)");
 
     function setUp() public {
         string[] memory cmds = new string[](3);
@@ -46,7 +48,12 @@ contract TornadoCatsTest is Test {
         IHasher hasher = IHasher(hasherAddress);
 
         verifier = new Verifier();
-        tornadoCats = new TornadoCats(IVerifier(address(verifier)), hasher, DENOMINATION, MERKLE_TREE_HEIGHTS);
+        tornadoCats = new TornadoCats(
+            IVerifier(address(verifier)),
+            hasher,
+            DENOMINATION,
+            MERKLE_TREE_HEIGHTS
+        );
     }
 
     function testDeposit() public {
@@ -71,12 +78,15 @@ contract TornadoCatsTest is Test {
         bytes32[] memory commitments = new bytes32[](logs.length);
         uint256[] memory leafIndices = new uint256[](logs.length);
         for (uint256 i = 0; i < logs.length; i++) {
-            (uint32 leafIndex,) = abi.decode(logs[0].data, (uint32, uint256));
+            (uint32 leafIndex, ) = abi.decode(logs[0].data, (uint32, uint256));
             leafIndices[i] = leafIndex;
             commitments[i] = logs[i].topics[1];
         }
         depositEventsJson.serialize("commitments", commitments);
-        depositEventsJson = depositEventsJson.serialize("leafIndices", leafIndices);
+        depositEventsJson = depositEventsJson.serialize(
+            "leafIndices",
+            leafIndices
+        );
         depositEventsJson.write("tmp/deposit_events.json");
     }
 
@@ -114,7 +124,10 @@ contract TornadoCatsTest is Test {
         assertEq(logs[0].topics.length, 2);
         assertEq(logs[0].topics[0], topicDeposit);
         assertEq(logs[0].topics[1], commitment);
-        (uint32 leafIndex, uint256 timestamp) = abi.decode(logs[0].data, (uint32, uint256));
+        (uint32 leafIndex, uint256 timestamp) = abi.decode(
+            logs[0].data,
+            (uint32, uint256)
+        );
         assertEq(leafIndex, 0);
         assertEq(timestamp, block.timestamp);
 
@@ -165,19 +178,32 @@ contract TornadoCatsTest is Test {
         }
         {
             string[] memory cmds = new string[](2);
-            cmds[0] = "python";
+            cmds[0] = "python3";
             cmds[1] = "cli/gen_proof_calldata.py";
             vm.ffi(cmds);
         }
         string memory proofJson = vm.readFile("tmp/proof_calldata.json");
         bytes memory proof = proofJson.readBytes(".proof");
         assertEq(recipient.balance, 0);
-        tornadoCats.withdraw(proof, bytes32(root), bytes32(nullifierHash), payable(recipient), payable(address(0)), 0);
+        tornadoCats.withdraw(
+            proof,
+            bytes32(root),
+            bytes32(nullifierHash),
+            payable(recipient),
+            payable(address(0)),
+            0
+        );
         assertEq(recipient.balance, DENOMINATION);
-        emit log_named_decimal_uint("  recipient balance", recipient.balance, 18);
+        emit log_named_decimal_uint(
+            "  recipient balance",
+            recipient.balance,
+            18
+        );
     }
 
-    function stringToUint(string memory numString) public pure returns (uint256) {
+    function stringToUint(
+        string memory numString
+    ) public pure returns (uint256) {
         uint256 val = 0;
         bytes memory stringBytes = bytes(numString);
         for (uint256 i = 0; i < stringBytes.length; i++) {
