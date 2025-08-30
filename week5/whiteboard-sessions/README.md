@@ -117,6 +117,73 @@ make test
 * [Tornado Cash ホワイトペーパー](https://tornado.cash/Tornado.cash_whitepaper_v1.4.pdf)
 * [ZK-SNARKs の基礎](https://z.cash/technology/zksnarks/)
 
+## 実行環境と連携の仕組み
+
+### 各コンポーネントの実行場所
+
+#### 1. circuits/ (Circomサーキット)
+- **実行場所**: ローカルマシンのコマンドライン
+- **実行タイミング**: `make phase2` 実行時
+- **具体的な処理**:
+  ```bash
+  circom circuits/withdraw.circom --r1cs --wasm --sym -o build
+  ```
+- **生成物**:
+  - `withdraw.r1cs`: 制約システム
+  - `withdraw_js/withdraw.wasm`: 証明生成用WASM
+
+#### 2. cli/cli.js (Node.js CLI)
+- **実行場所**: ローカルマシンのNode.js環境
+- **役割**: 
+  - デポジット用のnullifier/secret生成
+  - 引き出し用のwitness(証明の入力)生成
+- **使用例**:
+  ```bash
+  node cli/cli.js gen-deposit  # nullifier/secret生成
+  node cli/cli.js gen-input ... # witness生成
+  ```
+
+#### 3. 証明生成の流れ
+```bash
+# 1. witness生成
+node build/withdraw_js/generate_witness.js \
+  build/withdraw_js/withdraw.wasm \
+  tmp/input.json \
+  build/witness.wtns
+
+# 2. 証明生成
+snarkjs groth16 prove \
+  build/withdraw_0001.zkey \
+  build/witness.wtns \
+  build/proof.json \
+  build/public.json
+
+# 3. Solidityコールデータ形式に変換
+python cli/gen_proof_calldata.py
+```
+
+#### 4. コントラクトとの連携
+```solidity
+// 生成された証明をコントラクトに送信
+tornadoCats.withdraw(proof, bytes32(root), bytes32(nullifierHash), ...);
+```
+- 生成された証明(`proof`)を`TornadoCats.sol`の`withdraw`関数に渡す
+- コントラクト内で`Verifier.sol`の`verifyProof`関数が証明を検証
+
+### 実行環境のまとめ
+
+**各ツールの役割**:
+- **Circom**: ビルド時にコンパイラとして実行（回路→制約システム変換）
+- **snarkjs**: コマンドラインツールとして証明生成/検証
+- **Node.js CLI**: ヘルパーツールとして入力データ準備
+- **Foundry(forge test)**: テストランナーとしてFFI経由で上記を統合実行
+
+**連携の流れ**:
+1. ユーザーがnullifier/secretを生成
+2. デポジット時にcommitmentをコントラクトに送信
+3. 引き出し時にオフチェーンで証明を生成
+4. 証明をコントラクトに送信して検証・資金受け取り
+
 ## ライセンス
 
 本プロジェクトは教育目的のみです。
