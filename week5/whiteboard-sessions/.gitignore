@@ -30,3 +30,11 @@ venv-mkdocs
 
 # Draft
 _*.md
+
+.env.example
+CLAUDE.md
+settings.json
+settings.local.json
+DEPLOYMENT.md
+README.md
+DEPENDENCIES.md
